@@ -1,0 +1,13 @@
+[package]
+name = "AIP_Backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4"
+actix-cors="0.6"
+serde = { version = "1.0.197", features = ["derive"] }
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio", "macros", "postgres"] }
+tokio = { version = "1", features = ["full"] }
+dotenvy = "0.15"
+argon2 = "0.5"
