@@ -37,6 +37,73 @@ async fn get_user(db: web::Data<SqlitePool>,
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
+#[derive(sqlx::FromRow,Serialize, Deserialize)]
+pub struct ReqR{
+    requester: String,
+    verifier: String,
+    name: String,
+    hours: u32,
+    description: String,
+    id: u32,
+}
+
+#[actix_web::get("/requests/{id}")]
+//this API gets all of the hours confirmation requests for a teacher/faculty
+async fn get_requests(db: web::Data<SqlitePool>,
+    path: web::Path<String>,)->impl Responder{ 
+    let id = path.into_inner();
+    let result = sqlx::query_as::<_, ReqR>("SELECT * FROM event WHERE verifier = ?")
+        .bind(id)
+        .fetch_all(db.get_ref())//gets a vector filled with all of the requests
+        .await;
+
+    match result {
+        Ok(vec) => HttpResponse::Ok().json(vec),//outputs the information of the requests
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[actix_web::get("/remove/{id}")]
+//this API gets all of the hours confirmation requests for a teacher/faculty
+async fn remove(db: web::Data<SqlitePool>,
+    path: web::Path<u32>,)->impl Responder{ 
+    let id = path.into_inner();
+    let result = sqlx::query("DELETE FROM event WHERE id = ?")
+        .bind(id)
+        .execute(db.get_ref())//gets a vector filled with all of the requests
+        .await;
+
+    match result {
+        Ok(res) if res.rows_affected() > 0 => HttpResponse::Ok().body("User deleted"),
+        Ok(_) => HttpResponse::NotFound().body("User not found"),//outputs the information of the requests
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
+#[actix_web::get("/email/{id}/status/{xd}")]
+//this API gets all of the hours confirmation requests for a teacher/faculty
+async fn change_status(db: web::Data<SqlitePool>,
+    path: web::Path<(String,u32)>,)->impl Responder{ 
+    let (id,xd) = path.into_inner();
+    let update = sqlx::query("UPDATE users SET status =  ? WHERE email = ?")
+        .bind(xd)
+        .bind(&id)
+        .execute(db.get_ref())
+        .await;
+    if let Err(e) = update {
+        eprintln!("Failed to update status: {:?}", e);
+        return HttpResponse::InternalServerError().finish();
+    }
+    let result = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = ?")
+        .bind(&id)
+        .fetch_optional(db.get_ref())
+        .await;
+    match result {
+        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(None) => HttpResponse::NotFound().body("User not found"),
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
+
 
 #[derive(Deserialize)]
 pub struct LogUser{
@@ -52,7 +119,7 @@ rec: web::Json<LogUser>)->impl Responder{
         .await;
         match pwd_result {
             Ok(Some(record)) => {
-                if record.password.as_deref() == Some(&rec.password){
+                if record.password == rec.password{
                     let result = sqlx::query_as::<_, UserInfo>("SELECT * FROM users WHERE email = ?")
                     .bind((rec.email).clone())
                     .fetch_optional(db.get_ref())
@@ -71,7 +138,7 @@ rec: web::Json<LogUser>)->impl Responder{
             Ok(None) => HttpResponse::Unauthorized().body("User not found"),
             Err(_) => HttpResponse::InternalServerError().body("Database error"),
         }
-    }
+}
 
 #[derive(sqlx::FromRow,Serialize, Deserialize)]
 pub struct Req{
@@ -133,15 +200,17 @@ async fn change_hours(db: web::Data<SqlitePool>,
 }
 
 
-#[actix_web::get("/create/{id}")]
+#[actix_web::get("/create/{id}/email/{ed}/password/{pwd}")]
 async fn create_user_name(
-    user_data: web::Path<String>,
+    user_data: web::Path<(String, String, String)>,
     db: web::Data<SqlitePool>,
 ) -> impl Responder{
+    let (id, email,pwd) = user_data.into_inner();
     //this function creates a new user and gives them an auto-incremented user id
-    let result = sqlx::query("INSERT INTO users (name,email) VALUES (?, ?)")//adding to the database
-        .bind(user_data.clone())//user_data is {id}
-        .bind("lorenzojmarck@gmail.com")
+    let result = sqlx::query("INSERT INTO users (name,email,password) VALUES (?, ?, ?)")//adding to the database
+        .bind(id)//user_data is {id}
+        .bind(email)
+        .bind(pwd)
         .execute(db.get_ref())
         .await;
     match result { // the match control flow allows for the code to run a specific set of commands following the outcome of "result"
@@ -166,9 +235,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move||{
         
         let app_pool_data = web::Data::new(pool.clone());
-        App::new().wrap(Cors::permissive()).app_data(app_pool_data).service(get_user).service(create_user_name).service(change_hours).service(user_login).service(send_hours)//states what functions we can use, order does not matter
+        App::new().wrap(Cors::permissive()).app_data(app_pool_data).service(get_user).service(create_user_name).service(change_hours).service(user_login).service(send_hours).service(get_requests).service(change_status).service(remove)//states what functions we can use, order does not matter
     })
-        .bind(("0.0.0.0", port))?
+        .bind(("localhost", port))?
         .workers(2)
         .run()
         .await
