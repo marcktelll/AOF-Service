@@ -76,34 +76,65 @@ function SendHours() {
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
-    <div className="send-hours-container">
-      <h2>Welcome{user ? `, ${user.name}` : ''}!</h2>
-      <p><strong>Total Hours:</strong> {user?.hours ?? 'Loading...'}</p>
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      width: '100vw',
+      backgroundColor: '#f5f5f5',
+      fontSize: '1.2rem'
+    }}>
+      <div style={{
+        padding: '2.5rem',
+        border: '1px solid #ccc',
+        borderRadius: '10px',
+        backgroundColor: '#fff',
+        boxShadow: '0 0 15px rgba(0,0,0,0.15)',
+        width: '400px',
+        textAlign: 'center',
+        color: 'black'
+      }}>
+        <h2>Welcome{user ? `, ${user.name}` : ''}!</h2>
+        <p><strong>Total Hours:</strong> {user?.hours ?? 'Loading...'}</p>
 
-      <h3>Submit Hours</h3>
-      <input
-        name="verifier"
-        placeholder="Verifier Email"
-        value={form.verifier}
-        onChange={handleChange}
-      /><br />
-      <input
-        name="hours"
-        placeholder="Hours"
-        value={form.hours}
-        onChange={handleChange}
-      /><br />
-      <textarea
-        name="description"
-        placeholder="Description"
-        value={form.description}
-        onChange={handleChange}
-      /><br />
-      <button onClick={sendHours} disabled={loading}>
-        {loading ? 'Sending...' : 'Submit'}
-      </button>
+        <h3>Submit Hours</h3>
+        <input
+          name="verifier"
+          placeholder="Verifier Email"
+          value={form.verifier}
+          onChange={handleChange}
+          style={{ marginBottom: '1rem', padding: '10px', width: '100%', fontSize: '1rem' }}
+        />
+        <input
+          name="hours"
+          placeholder="Hours"
+          value={form.hours}
+          onChange={handleChange}
+          style={{ marginBottom: '1rem', padding: '10px', width: '100%', fontSize: '1rem' }}
+        />
+        <textarea
+          name="description"
+          placeholder="Description"
+          value={form.description}
+          onChange={handleChange}
+          style={{ marginBottom: '1.5rem', padding: '10px', width: '100%', fontSize: '1rem' }}
+        />
+        <button
+          onClick={sendHours}
+          disabled={loading}
+          style={{
+            padding: '12px 24px',
+            fontSize: '1rem',
+            width: '100%',
+            cursor: 'pointer'
+          }}
+        >
+          {loading ? 'Sending...' : 'Submit'}
+        </button>
 
-      {response && <p>{response}</p>}
+        {response && <p style={{ marginTop: '1rem', color: response.startsWith('Error') ? 'red' : 'green' }}>{response}</p>}
+      </div>
     </div>
   );
 }
