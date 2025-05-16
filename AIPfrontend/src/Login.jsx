@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from './assets/aof-logo.jpeg'; // Adjust path as needed
+import logo from './assets/aof-logo.jpeg'; // Logo image
 
 function Login() {
+  // State to track form input values
   const [form, setForm] = useState({ email: '', password: '' });
+  // State to handle error messages
   const [error, setError] = useState('');
+  // Hook to programmatically navigate between routes
   const navigate = useNavigate();
 
+  // Handle input changes and update state
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Login function to authenticate user
   const login = async () => {
     try {
       const res = await fetch('http://localhost:8080/login', {
@@ -19,21 +24,25 @@ function Login() {
         body: JSON.stringify(form),
       });
 
+      // If login failed, throw an error 
       if (!res.ok) throw new Error(await res.text());
 
       const user = await res.json();
+
+      // Store user email and status in local storage
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userStatus', user.status);
 
-      // Redirect based on user status
+      // Navigate based on user role
       if (user.status === 1) {
-        navigate('/send-hours');
+        navigate('/send-hours'); // Volunteer
       } else if (user.status === 2) {
-        navigate('/approve-hours');
+        navigate('/approve-hours'); //  approver
       } else {
-        alert('Unknown user status');
+        alert('Unknown user status'); // Fallback
       }
     } catch (err) {
+      // Display error message
       setError(err.message);
     }
   };
@@ -68,11 +77,13 @@ function Login() {
           }}
         />
 
-        {/* Title */}
+        {/* Form title */}
         <h2 style={{ marginBottom: '1.5rem', fontSize: '1.8rem', color:'black' }}>Login</h2>
 
+        {/* Error message */}
         {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
 
+        {/* Email input */}
         <input
           name="email"
           type="email"
@@ -86,6 +97,8 @@ function Login() {
             fontSize: '1.2rem'
           }}
         />
+
+        {/* Password input */}
         <input
           name="password"
           type="password"
@@ -99,6 +112,8 @@ function Login() {
             fontSize: '1.2rem'
           }}
         />
+
+        {/* Login button */}
         <button
           onClick={login}
           style={{
