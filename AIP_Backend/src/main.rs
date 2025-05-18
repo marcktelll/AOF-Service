@@ -6,7 +6,7 @@ use serde::{Serialize,Deserialize};
 use actix_cors::Cors;
 //use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
-#[derive(sqlx::FromRow,Serialize, Deserialize)]
+#[derive(sqlx::FromRow,Serialize, Deserialize)] // an object called User that contains all of the information of each user.
 pub struct User{
     name: String,
     email: String,
@@ -14,15 +14,8 @@ pub struct User{
     hours: u32,
     status: u32,
 }
-#[derive(sqlx::FromRow,Serialize, Deserialize)]
-pub struct UserInfo{
-    name: String,
-    email: String,
-    hours: u32,
-    status: u32,
-}
 
-#[actix_web::get("/users/{id}")]
+#[actix_web::get("/users/{id}")] //This API will get the user's information - mainly used for testing
 async fn get_user(db: web::Data<SqlitePool>,
     path: web::Path<String>,)->impl Responder{ 
     let id = path.into_inner();
@@ -37,7 +30,8 @@ async fn get_user(db: web::Data<SqlitePool>,
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
-#[derive(sqlx::FromRow,Serialize, Deserialize)]
+#[derive(sqlx::FromRow,Serialize, Deserialize)]//an object that contains all of the information of a request. One thing 
+//to notice is the ID because the ID is autoincrementented so it is not included in the created reuqest object.
 pub struct ReqR{
     requester: String,
     verifier: String,
@@ -105,13 +99,24 @@ async fn change_status(db: web::Data<SqlitePool>,
 }
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize)] // this object is used to match the input for a user log in
 pub struct LogUser{
     email: String,
     password: String,
 }
 
-#[actix_web::post("/login")]
+
+
+#[derive(sqlx::FromRow,Serialize, Deserialize)] // this object is used to return some but not all of the user's information - namely not including the password for security reasons
+pub struct UserInfo{
+    name: String,
+    email: String,
+    hours: u32,
+    status: u32,
+}
+#[actix_web::post("/login")] //this API is used for when the user logs in
+//it takes in the LogUser information as an input, and if the information is correct
+//it will return the corresponding user information
 async fn user_login(db: web::Data<SqlitePool>,
 rec: web::Json<LogUser>)->impl Responder{
     let pwd_result = sqlx::query!("SELECT password FROM users WHERE email = ?", rec.email)
@@ -141,6 +146,8 @@ rec: web::Json<LogUser>)->impl Responder{
 }
 
 #[derive(sqlx::FromRow,Serialize, Deserialize)]
+//This object is used when a request is being created, it doesn't
+// include the ID because it is autoincrementing
 pub struct Req{
     requester: String,
     verifier: String,
@@ -150,6 +157,8 @@ pub struct Req{
 }
 
 #[actix_web::post("/sendHours")]
+//takes data corresponding to the Req object as an input,
+//returns the faculty that the reccomendation is being sent to because it has to make sure that person exists
 async fn send_hours(db: web::Data<SqlitePool>,
 info: web::Json<Req>)->impl Responder{
     let result = sqlx::query("INSERT INTO event (requester,verifier,name,hours,description ) VALUES (?, ?,?,?,?)")//adding to the database
@@ -176,6 +185,7 @@ info: web::Json<Req>)->impl Responder{
 }
 
 #[actix_web::put("/users/{id}/add/{hrs}")]
+//this API is used to update hours, taking in the users email and the number of hours as an input
 async fn change_hours(db: web::Data<SqlitePool>,
     path: web::Path<(String, u32)>,)->impl Responder{ 
     let (id, hrs) = path.into_inner();
@@ -200,7 +210,7 @@ async fn change_hours(db: web::Data<SqlitePool>,
 }
 
 
-#[actix_web::get("/create/{id}/email/{ed}/password/{pwd}")]
+#[actix_web::get("/create/{id}/email/{ed}/password/{pwd}")] // used to create a user - mainly for testing
 async fn create_user_name(
     user_data: web::Path<(String, String, String)>,
     db: web::Data<SqlitePool>,
@@ -223,7 +233,7 @@ async fn create_user_name(
 }
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    //the main function sets up the server with the address 127.0.0.1 and port 8080
+    //the main function sets up the server with the address localhost and port 8080
     let port = 8080;
     println!("Starting port on port {}", port);
     dotenv().ok();
@@ -234,10 +244,14 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to connect to DB");
     HttpServer::new(move||{
         
-        let app_pool_data = web::Data::new(pool.clone());
-        App::new().wrap(Cors::permissive()).app_data(app_pool_data).service(get_user).service(create_user_name).service(change_hours).service(user_login).service(send_hours).service(get_requests).service(change_status).service(remove)//states what functions we can use, order does not matter
+        let app_pool_data = web::Data::new(pool.clone()); //lets the APIs use the database information
+        App::new().wrap(Cors::permissive()).app_data(app_pool_data).service(get_user)
+        .service(create_user_name).service(change_hours).service(user_login)
+        .service(send_hours).service(get_requests).service(change_status).service(remove)
+        //states what functions we can use, order does not matter
+        //starts the app and allows for the API functionality <-- basically connects everything together
     })
-        .bind(("localhost", port))?
+        .bind(("localhost", port))? //binds the address and port
         .workers(2)
         .run()
         .await
